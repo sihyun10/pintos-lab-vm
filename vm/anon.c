@@ -4,12 +4,14 @@
 #include "devices/disk.h"
 
 /* DO NOT MODIFY BELOW LINE */
+// ※ 해당 라인은 수정하지마세요. ※
 static struct disk *swap_disk;
 static bool anon_swap_in (struct page *page, void *kva);
 static bool anon_swap_out (struct page *page);
 static void anon_destroy (struct page *page);
 
 /* DO NOT MODIFY this struct */
+// ※ 해당 구조체는 수정하지 마세요. ※
 static const struct page_operations anon_ops = {
 	.swap_in = anon_swap_in,
 	.swap_out = anon_swap_out,
@@ -18,16 +20,20 @@ static const struct page_operations anon_ops = {
 };
 
 /* Initialize the data for anonymous pages */
+// 익명 페이지에 대한 데이터 초기화를 수행합니다.
 void
 vm_anon_init (void) {
 	/* TODO: Set up the swap_disk. */
+	// swao_disk를 설정하세요.
 	swap_disk = NULL;
 }
 
 /* Initialize the file mapping */
+// 파일 매핑을 초기화합니다.
 bool
 anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* Set up the handler */
+	// handler를 설정하세요.
 	page->operations = &anon_ops;
 
 	struct anon_page *anon_page = &page->anon;
@@ -40,12 +46,14 @@ anon_swap_in (struct page *page, void *kva) {
 }
 
 /* Swap out the page by writing contents to the swap disk. */
+// 스왑 디스크에서 내용을 읽어 페이지를 스왑합니다.
 static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */
+// 익명 페이지를 삭제합니다. 호출자가 PAGE를 해제합니다.
 static void
 anon_destroy (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
