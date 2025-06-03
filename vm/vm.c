@@ -4,9 +4,14 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+<<<<<<< HEAD
 #include "threads/thread.h" // 안전하게 struct thread 내부 구조 접근을 위한 선언
+    =======
+#include "threads/mmu.h"
+    >>>>>>> 8c0682a (feat: 가상 주소에 대응되는 페이지를 검색하는 spt_find_page() 함수 구현 #3)
 
-static unsigned page_hash(const struct hash_elem *e, void *aux UNUSED);
+    static unsigned
+    page_hash(const struct hash_elem *e, void *aux UNUSED);
 static bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED);
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
@@ -83,11 +88,14 @@ err:
 struct page *
 spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 {
-  struct page *page = NULL;
-  /* TODO: Fill this function. */
-  // 기능을 구현하세요.
+  struct page dummy_page;
+  dummy_page.va = pg_round_down(va);
 
-  return page;
+  struct hash_elem *e = hash_find(&spt->spt_hash, &dummy_page.hash_elem);
+  if (e == NULL)
+    return NULL;
+
+  return hash_entry(e, struct page, hash_elem);
 }
 
 /* Insert PAGE into spt with validation. */
