@@ -4,14 +4,10 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
-<<<<<<< HEAD
 #include "threads/thread.h" // 안전하게 struct thread 내부 구조 접근을 위한 선언
-    =======
 #include "threads/mmu.h"
-    >>>>>>> 8c0682a (feat: 가상 주소에 대응되는 페이지를 검색하는 spt_find_page() 함수 구현 #3)
 
-    static unsigned
-    page_hash(const struct hash_elem *e, void *aux UNUSED);
+static unsigned page_hash(const struct hash_elem *e, void *aux UNUSED);
 static bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED);
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
@@ -109,7 +105,7 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
   {
     if (spt_find_page(spt, page->va) == NULL)
     {
-      hash_insert(&spt->hash_table, &page->hash_elem);
+      hash_insert(&spt->spt_hash, &page->hash_elem);
       succ = true;
     }
   }
@@ -235,9 +231,11 @@ vm_do_claim_page(struct page *page)
 
 /* Initialize new supplemental page table */
 // 새로운 보충 페이지 테이블을 초기화합니다.
-void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
-{
-  hash_init(&spt->spt_hash, page_hash, page_less, NULL);
+void
+supplemental_page_table_init (struct supplemental_page_table *spt) {
+	if(!hash_init(&spt->spt_hash, page_hash, page_less, NULL)){
+		PANIC("Failed SPT Table Init");
+	}
 }
 
 /* Copy supplemental page table from src to dst */
@@ -256,12 +254,16 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
   // 스레드가 보유한 supplemental_page_table을 모두 파괴하고 수정된 내용을 모두 저장소에 다시 쓰게 구현하세요.
 }
 
+/* 페이지를 해시값으로 가져오기 위한 함수 */
 static unsigned page_hash(const struct hash_elem *e, void *aux UNUSED)
 {
+  // e 포인터로부터 그걸 포함하고 있는 struct page 구조체의 시작 주소를 구하는 것
   const struct page *p = hash_entry(e, struct page, hash_elem);
+  // p->va값을 해시값으로 가져오겠다는 뜻
   return hash_bytes(&p->va, sizeof(p->va));
 }
 
+/* 값의 크기를 비교하는 것(해시값이 같을 때, 같은 버킷일 경우 어떤 항목으로 오름차순, 내림차순 할지를 결정)*/
 static bool page_less(const struct hash_elem *a,
                       const struct hash_elem *b,
                       void *aux UNUSED)
