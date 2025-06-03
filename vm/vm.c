@@ -206,21 +206,24 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 // 새로운 보충 페이지 테이블을 초기화합니다.
 void
-supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+supplemental_page_table_init (struct supplemental_page_table *spt) {
+	if(!hash_init(spt->hash, page_hash, page_less, NULL)){
+		PANIC("Failed SPT Table Init");
+	}
 }
 
 /* Copy supplemental page table from src to dst */
 // src에서 dst로 보충 페이지 테이블 복사합니다.
 bool
-supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
-		struct supplemental_page_table *src UNUSED) {
+supplemental_page_table_copy (struct supplemental_page_table *dst,
+		struct supplemental_page_table *src) {
 }
 
 /* Free the resource hold by the supplemental page table */
 // 보충 페이지 테이블에서 리소스 보류를 해제합니다.
 void
-supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
-		/* TODO: Destroy all the supplemental_page_table hold by thread and
+supplemental_page_table_kill (struct supplemental_page_table *spt) {
+	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 	// 스레드가 보유한 supplemental_page_table을 모두 파괴하고 수정된 내용을 모두 저장소에 다시 쓰게 구현하세요.
 }
