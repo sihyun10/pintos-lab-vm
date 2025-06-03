@@ -28,3 +28,33 @@ Thumbs.db
 # 빌드 디렉토리 (예: makefile 빌드 시 사용)
 build/
 bin/
+
+# Clion cmake build folder
+/cmake-build-debug/
+/cmake-build-debug--/
+/cmake-build-release/
+.idea
+/CMakeFiles
+
+# Clion cmake build file
+CMakeLists.txt
+CMakeCache.txt
+cmake_install.cmake
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+.gitignore
+.gitconfig
