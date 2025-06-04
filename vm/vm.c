@@ -154,8 +154,18 @@ vm_evict_frame(void)
 static struct frame *
 vm_get_frame(void)
 {
-  struct frame *frame = NULL;
-  /* TODO: Fill this function. */
+  void *kva = palloc_get_page(PAL_USER);
+  if (kva == NULL)
+  {
+    PANIC("todo");
+  }
+
+  struct frame *frame = malloc(sizeof(struct frame));
+  if (frame == NULL)
+    PANIC("failed");
+
+  frame->kva = kva;
+  frame->page = NULL; // 아직 어떤 페이지와도 매핑되지 않았음
 
   ASSERT(frame != NULL);
   ASSERT(frame->page == NULL);
@@ -231,11 +241,12 @@ vm_do_claim_page(struct page *page)
 
 /* Initialize new supplemental page table */
 // 새로운 보충 페이지 테이블을 초기화합니다.
-void
-supplemental_page_table_init (struct supplemental_page_table *spt) {
-	if(!hash_init(&spt->spt_hash, page_hash, page_less, NULL)){
-		PANIC("Failed SPT Table Init");
-	}
+void supplemental_page_table_init(struct supplemental_page_table *spt)
+{
+  if (!hash_init(&spt->spt_hash, page_hash, page_less, NULL))
+  {
+    PANIC("Failed SPT Table Init");
+  }
 }
 
 /* Copy supplemental page table from src to dst */
@@ -277,8 +288,8 @@ static bool page_less(const struct hash_elem *a,
 /* 페이지를 해시값으로 가져오기 위한 함수 */
 static unsigned page_hash(const struct hash_elem *e, void *aux UNUSED)
 {
-	// e 포인터로부터 그걸 포함하고 있는 struct page 구조체의 시작 주소를 구하는 것
-	// p->va값을 해시값으로 가져오겠다는 뜻
+  // e 포인터로부터 그걸 포함하고 있는 struct page 구조체의 시작 주소를 구하는 것
+  // p->va값을 해시값으로 가져오겠다는 뜻
   const struct page *p = hash_entry(e, struct page, hash_elem);
   return hash_bytes(&p->va, sizeof(p->va));
 }
@@ -294,14 +305,16 @@ static bool page_less(const struct hash_elem *a,
 }
 
 /* 페이지를 해시값으로 가져오기 위한 함수 */
-unsigned page_hash(const struct hash_elem *e, void *aux){
-	struct page *p = hash_entry(e, struct page, hash_elem);
-	return hash_bytes(&p->va, sizeof(p->va));
+unsigned page_hash(const struct hash_elem *e, void *aux)
+{
+  struct page *p = hash_entry(e, struct page, hash_elem);
+  return hash_bytes(&p->va, sizeof(p->va));
 }
 
 /* 값의 크기를 비교하는 것(해시값이 같을 때, 같은 버킷일 경우 어떤 항목으로 오름차순, 내림차순 할지를 결정)*/
-bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux){
-	struct page *p1 = hash_entry(a, struct page, hash_elem);
-	struct page *p2 = hash_entry(b, struct page, hash_elem);
-	return p1->va < p2->va;
+bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux)
+{
+  struct page *p1 = hash_entry(a, struct page, hash_elem);
+  struct page *p2 = hash_entry(b, struct page, hash_elem);
+  return p1->va < p2->va;
 }
