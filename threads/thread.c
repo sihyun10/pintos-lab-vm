@@ -214,6 +214,7 @@ thread_create(const char* name, int priority,
   /* Initialize thread. */
   init_thread(t, name, priority);
   tid = t->tid = allocate_tid();
+  supplemental_page_table_init(&t->spt);
   
   /* child list init */
   lock_init(&t->childlist_lock);
@@ -255,7 +256,6 @@ thread_create(const char* name, int priority,
   t->tf.ss = SEL_KDSEG;
   t->tf.cs = SEL_KCSEG;
   t->tf.eflags = FLAG_IF;
-
 
 
   /* Add to run queue. */
