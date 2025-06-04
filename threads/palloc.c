@@ -300,6 +300,11 @@ palloc_get_multiple (enum palloc_flags flags, size_t page_cnt) {
    then the page is filled with zeros.  If no pages are
    available, returns a null pointer, unless PAL_ASSERT is set in
    FLAGS, in which case the kernel panics. */
+/* 싱글 반환 페이지와 KVA를 리턴하는것을 포함한다.
+   만약, PAL_USER로 설정되었으면, user_pool으로부터 획득된 페이지고, 
+   다르다면 kernel_pool 으로부터 획득된 페이지다.
+   만약, PAL_ZERO 플래그가 설정되어져있다면, 페이지는 zero로 채워진다.
+   가용 페이지가 없으면, null을 반환하고, 커널패닉의 경우 PAL_ASSERT가 플래그를 설정한다. */
 void *
 palloc_get_page (enum palloc_flags flags) {
 	return palloc_get_multiple (flags, 1);

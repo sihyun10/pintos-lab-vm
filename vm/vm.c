@@ -63,7 +63,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: should modify the field after calling the uninit_new. */
 		// 해야될 것: 페이지를 생성하고, VM 유형에 따라 초기화 파일을 가져온 후, uninit_new를 호출하여 "uninit" 페이지 구조체를 생성합니다.
 		// 해야될 것: uninit_new를 호출한 후 필드를 수정해야 합니다.
-
+		
 		/* TODO: Insert the page into the spt. */
 		// 해당 페이지를 spt에 삽입합니다.
 	}
@@ -75,11 +75,17 @@ err:
 // spt에서 VA를 찾아 페이지를 반환합니다. 오류가 발생하면 NULL을 반환합니다.
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
+	struct page *page;
 	/* TODO: Fill this function. */
+	/* spt에서 va hash_elem을 찾아서, elem안에서 va값에*/
+	struct hash_elem *e;
+	page->va = pg_round_down(va);
+	struct hash_elem *e = hash_find(&spt->hash, &page->hash_elem);
+	if(e != NULL){
+		return hash_entry(e, struct page, hash_elem);
+	}
 	// 기능을 구현하세요.
-
-	return page;
+	return NULL;
 }
 
 /* Insert PAGE into spt with validation. */
@@ -89,7 +95,10 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
 	int succ = false;
 	/* TODO: Fill this function. */
-
+	struct hash_elem *e = hash_insert(&spt->hash, &page->hash_elem);
+	if(e !=NULL){
+		succ = true;
+	}
 	return succ;
 }
 
@@ -106,7 +115,7 @@ vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
 	 // 내보내는 규칙은 본인이 정하세요.
-
+	victim->
 	return victim;
 }
 
@@ -133,15 +142,15 @@ static struct frame *
 vm_get_frame (void) {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
-
+	
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
 	return frame;
-}
+}//*  */
 
 /* Growing the stack. */
 // 스택을 키웁니다.
-static void
+// static void
 vm_stack_growth (void *addr UNUSED) {
 }
 
@@ -219,6 +228,19 @@ supplemental_page_table_copy (struct supplemental_page_table *dst,
 		struct supplemental_page_table *src) {
 }
 
+/* 해시에 저장된 페이지를 직접 꺼내서, 소멸자를 직접 호출해냄*/
+void page_destroy(struct hash_elem *e, void *aux UNUSED) {
+	/* 페이지를 꺼내서, operations*/
+    struct page *p = hash_entry(e, struct page, hash_elem);
+    
+	// operations이 null이 아니고, destroy또한 Null이 아니라면 destroy
+    if (p->operations && p->operations->destroy)
+        p->operations->destroy(p);  // 타입별 소멸자 호출
+    
+    // page 자체 메모리 해제 (frame과 page가 따로 할당된 경우에만)
+    free(p);
+}
+
 /* Free the resource hold by the supplemental page table */
 // 보충 페이지 테이블에서 리소스 보류를 해제합니다.
 void
@@ -226,4 +248,5 @@ supplemental_page_table_kill (struct supplemental_page_table *spt) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 	// 스레드가 보유한 supplemental_page_table을 모두 파괴하고 수정된 내용을 모두 저장소에 다시 쓰게 구현하세요.
+	hash_destroy(spt->hash, page_destroy);
 }
