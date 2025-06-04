@@ -216,8 +216,11 @@ void vm_dealloc_page(struct page *page)
 bool vm_claim_page(void *va UNUSED)
 {
   struct page *page = NULL;
-  /* TODO: Fill this function */
-  // 기능을 구현하세요.
+
+  page = spt_find_page(&thread_current()->spt, va);
+
+  if (page == NULL)
+    return false;
 
   return vm_do_claim_page(page);
 }
