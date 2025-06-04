@@ -104,7 +104,15 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
                      struct page *page UNUSED)
 {
   int succ = false;
-  /* TODO: Fill this function. */
+
+  if (is_user_vaddr(page->va))
+  {
+    if (spt_find_page(spt, page->va) == NULL)
+    {
+      hash_insert(&spt->hash_table, &page->hash_elem);
+      succ = true;
+    }
+  }
 
   return succ;
 }
