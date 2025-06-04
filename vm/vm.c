@@ -1,9 +1,10 @@
 /* vm.c: Generic interface for virtual memory objects. */
 /* vm.c: 가상 메모리 객체를 위한 일반 인터페이스. */
-
+#define VM // thread 구조체 내부 defif VM의 spt에 접근하기 위한 선언 (vm.c는 VM으로 동작)
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "threads/thread.h" // 안전하게 struct thread 내부 구조 접근을 위한 선언
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
