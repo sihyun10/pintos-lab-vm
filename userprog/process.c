@@ -36,6 +36,14 @@ process_init (void) {
 	struct thread *current = thread_current ();
 }
 
+struct temp_load{
+	struct file *file;
+	off_t *offset;
+	uint32_t read_bytes;
+	uint32_t zero_bytes;
+	bool writable;
+};
+
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
  * The new thread may be scheduled (and may even exit)
  * before process_create_initd() returns. Returns the initd's
@@ -997,7 +1005,21 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		/* temp_load라는 구조체를 새로 만들어서, 메모리에 올릴때 요청시에만 올릴거다.
+		 * 그렇기에, 매번 파일의 정보를 읽은 만큼을 나눠야 하기 때문에, 계속 갱신이 필요한데, 그것을 인자를 aux에 담아서 넘긴다.
+		 * 넘길때, 값을 갱신시켜줘야 하는데, 일단 위에서 페이지에서 읽은 만큼을 나눠주고, 값을 갱신하는 연산은 다 진행했기에, 그것에 맞춰 구조체 값을 초기화 시킨다.
+		 * 필요한 애들은, 
+		 * 읽을 파일의 대상인 file
+		 * 페이지 할당한 곳 기준으로부터의 높이인 ofs
+		 * 페이지를 어느정도 읽을지 (4KB가 넘으면, 4KB, 그게 아니면 남은 값)
+		 * 페이지를 읽고 나서 0으로 얼마나 채워넣는지(4KB - 읽은 바이트의 크기)*/
+		struct temp_load *temp_load = malloc(sizeof(temp_load));
+		temp_load->file = file;
+		temp_load->offset = ofs;
+		temp_load->read_bytes = page_read_bytes;
+		temp_load->zero_bytes = page_zero_bytes;
+		/*aux로 넘길 구조체로 초기화*/
+		void *aux = temp_load;
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, aux))
 			return false;
@@ -1006,6 +1028,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		/*오프셋은, 읽은 만큼의 크기만큼 더해준 값으로 갱신*/
+		ofs += page_read_bytes;
 	}
 	return true;
 }

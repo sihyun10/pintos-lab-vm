@@ -106,9 +106,7 @@ struct page_operations
 
 #define swap_in(page, v) (page)->operations->swap_in((page), v)
 #define swap_out(page) (page)->operations->swap_out(page)
-#define destroy(page)              \
-  if ((page)->operations->destroy) \
-  (page)->operations->destroy(page)
+#define destroy(page) if ((page)->operations->destroy) (page)->operations->destroy(page)
 
 /* Representation of current process's memory space.
  * We don't want to force you to obey any specific design for this struct.
@@ -129,7 +127,7 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt);
 struct page *spt_find_page(struct supplemental_page_table *spt,
                            void *va);
 bool spt_insert_page(struct supplemental_page_table *spt, struct page *page);
-void spt_remove_page(struct supplemental_page_table *spt, struct page *page);
+bool spt_remove_page(struct supplemental_page_table *spt, struct page *page);
 
 void vm_init(void);
 bool vm_try_handle_fault(struct intr_frame *f, void *addr, bool user,

@@ -108,3 +108,4 @@ merge (void) // 병합 함수입니다.
   unsigned char *mp[CHUNK_CNT]; // 각 청크의 현재 병합 위치를 가리키는 포인터 배열입니다.
   size_t mp_left;               // 아직 병합할 데이터가 남은 청크의 수입니다.
   unsigned char *op;            // buf2에 데이터를 쓸 위치를 가리
+}
