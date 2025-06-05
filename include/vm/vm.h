@@ -106,9 +106,7 @@ struct page_operations
 
 #define swap_in(page, v) (page)->operations->swap_in((page), v)
 #define swap_out(page) (page)->operations->swap_out(page)
-#define destroy(page)              \
-  if ((page)->operations->destroy) \
-  (page)->operations->destroy(page)
+#define destroy(page) if ((page)->operations->destroy) (page)->operations->destroy(page)
 
 /* 최대 스택 크기 1MB 제한 */
 #define STACK_LIMIT (USER_STACK - (1 << 20))
@@ -133,7 +131,7 @@ void destroy_page_entry(struct hash_elem *e, void *aux);
 struct page *spt_find_page(struct supplemental_page_table *spt,
                            void *va);
 bool spt_insert_page(struct supplemental_page_table *spt, struct page *page);
-void spt_remove_page(struct supplemental_page_table *spt, struct page *page);
+bool spt_remove_page(struct supplemental_page_table *spt, struct page *page);
 
 void vm_init(void);
 bool vm_try_handle_fault(struct intr_frame *f, void *addr, bool user,
