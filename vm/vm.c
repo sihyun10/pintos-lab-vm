@@ -6,6 +6,7 @@
 #include "vm/inspect.h"
 #include "threads/thread.h" // 안전하게 struct thread 내부 구조 접근을 위한 선언
 #include "threads/mmu.h"
+#include "userprog/process.h"
 
 static unsigned page_hash(const struct hash_elem *e, void *aux UNUSED);
 static bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED);
@@ -155,7 +156,6 @@ vm_evict_frame(void)
 // palloc() 함수는 프레임을 가져옵니다. 사용 가능한 페이지가 없으면 해당 페이지를 제거하고 반환합니다.
 // 이 함수는 항상 유효한 주소를 반환합니다.
 // 즉, 사용자 풀 메모리가 가득 차면 이 함수는 프레임을 제거하여 사용 가능한 메모리 공간을 가져옵니다.
-// TODO: frame management in memory management
 static struct frame *
 vm_get_frame(void)
 {
@@ -224,7 +224,9 @@ bool vm_claim_page(void *va UNUSED)
     struct page *page = NULL;
     /* TODO: Fill this function */
     // 기능을 구현하세요.
-
+    page = spt_find_page(&thread_current()->spt, va); // va 주소를 가진 struct page를 spt 내부에서 찾음
+    if(page == NULL)
+        return false;
     return vm_do_claim_page(page);
 }
 
@@ -235,14 +237,18 @@ static bool
 vm_do_claim_page(struct page *page)
 {
     struct frame *frame = vm_get_frame();
+    ASSERT(frame != NULL);
+    ASSERT(frame->page == NULL);
 
     /* Set links */
+    /* 양방향 링킹 구현(기존 제공 코드)*/
     frame->page = page;
     page->frame = frame;
 
     /* TODO: Insert page table entry to map page's VA to frame's PA. */
     // 페이지의 VA를 프레임의 PA에 매핑하기 위해 페이지 테이블 항목을 삽입합니다.
-
+    if (!install_page(page->va, frame->kva, page->writable))
+        return false;
     return swap_in(page, frame->kva);
 }
 
