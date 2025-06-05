@@ -292,37 +292,3 @@ static bool page_less(const struct hash_elem *a,
 
   return pa->va < pb->va;
 }
-
-/* 페이지를 해시값으로 가져오기 위한 함수 */
-static unsigned page_hash(const struct hash_elem *e, void *aux UNUSED)
-{
-  // e 포인터로부터 그걸 포함하고 있는 struct page 구조체의 시작 주소를 구하는 것
-  // p->va값을 해시값으로 가져오겠다는 뜻
-  const struct page *p = hash_entry(e, struct page, hash_elem);
-  return hash_bytes(&p->va, sizeof(p->va));
-}
-
-static bool page_less(const struct hash_elem *a,
-                      const struct hash_elem *b,
-                      void *aux UNUSED)
-{
-  const struct page *pa = hash_entry(a, struct page, hash_elem);
-  const struct page *pb = hash_entry(b, struct page, hash_elem);
-
-  return pa->va < pb->va;
-}
-
-/* 페이지를 해시값으로 가져오기 위한 함수 */
-unsigned page_hash(const struct hash_elem *e, void *aux)
-{
-  struct page *p = hash_entry(e, struct page, hash_elem);
-  return hash_bytes(&p->va, sizeof(p->va));
-}
-
-/* 값의 크기를 비교하는 것(해시값이 같을 때, 같은 버킷일 경우 어떤 항목으로 오름차순, 내림차순 할지를 결정)*/
-bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux)
-{
-  struct page *p1 = hash_entry(a, struct page, hash_elem);
-  struct page *p2 = hash_entry(b, struct page, hash_elem);
-  return p1->va < p2->va;
-}
