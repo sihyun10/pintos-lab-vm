@@ -3,6 +3,8 @@
 #define VM // thread 구조체 내부 defif VM의 spt에 접근하기 위한 선언 (vm.c는 VM으로 동작)
 #include "threads/malloc.h"
 #include "vm/vm.h"
+
+#include "stdio.h"
 #include "vm/inspect.h"
 #include "threads/thread.h" // 안전하게 struct thread 내부 구조 접근을 위한 선언
 #include "threads/mmu.h"
@@ -66,7 +68,10 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
     ASSERT(VM_TYPE(type) != VM_UNINIT)
 
     struct supplemental_page_table *spt = &thread_current()->spt;
+    struct page *page;
 
+    if (!is_user_vaddr(upage))
+        goto err;
     /* Check wheter the upage is already occupied or not. */
     // 이미지가 이미 점유되어 있는지 확인하세요.
     if(spt_find_page(spt, upage) == NULL)
@@ -76,10 +81,29 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
          * TODO: should modify the field after calling the uninit_new. */
         // 해야될 것: 페이지를 생성하고, VM 유형에 따라 초기화 파일을 가져온 후, uninit_new를 호출하여 "uninit" 페이지 구조체를 생성합니다.
         // 해야될 것: uninit_new를 호출한 후 필드를 수정해야 합니다.
+        page = malloc(sizeof *page);
+        if(page == NULL)
+        {
+            printf("📃vm_alloc_page_with_initializer: malloc for page failed\n");
+            goto err;
+        }
+
+        /* uninit_new 내부에서는 새로 할당한 page 내부에 unitit 인자 초기화,  */
+        uninit_new(page, upage, NULL, VM_UNINIT, NULL, uninit_initialize);
+        page->writable = writable;
 
         /* TODO: Insert the page into the spt. */
         // 해당 페이지를 spt에 삽입합니다.
+        bool success = spt_insert_page(spt, page);
+        if (!success)
+        {
+            free(page);
+            printf("📩vm_alloc_page_with_init spt_insert_page failed\n");
+            goto err;
+        }
+        return true;
     }
+    goto err;
 err:
     return false;
 }
