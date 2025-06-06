@@ -2,12 +2,10 @@
    16 chunks.  A separate subprocess sorts each chunk; the
    subprocesses run in parallel.  Then we merge the chunks and
    verify that the result is what it should be. */
-/* parallel_merge라는 핵심 함수를 제공하며, 이 함수는 약 1MB의 랜덤 데이터를 생성하여 여러 청크로 나눕니다.
- * 각 청크는 별도의 자식 프로세스에 의해 병렬로 정렬됩니다.
- * 그 후, 부모 프로세스는 정렬된 청크들을 병합하고 최종 결과가 올바른지
- * (원래 데이터의 모든 요소가 정렬된 순서로 포함되어 있는지) 확인합니다.
- * 이 파일 자체는 parallel_merge 함수의 구현부이며, 다른 page-merge-xx.c  테스트 파일들이
- * 이 함수를 호출하여 특정 자식 프로세스(정렬 방식)와 예상 종료 코드를 지정하여 테스트를 실행합니다*/
+// 약 1MB의 랜덤 데이터를 생성하여 16개의 청크로 나눕니다.
+// 각 청크는 별도의 하위 프로세스에 의해 정렬되며, 하위 프로세스들은
+// 병렬로 실행됩니다. 그런 다음 청크들을 병합하고 결과가
+// 올바른지 확인합니다.
 // (주석은 16 청크를 언급하지만, 아래 CHUNK_CNT는 8로 정의됨)
 
 #include "tests/vm/parallel-merge.h" // 이 파일에서 제공하는 parallel_merge 함수의 선언을 포함합니다.
@@ -105,7 +103,81 @@ sort_chunks (const char *subprocess, int exit_status) // 청크 정렬 함수입
 static void
 merge (void) // 병합 함수입니다.
 {
-    unsigned char *mp[CHUNK_CNT]; // 각 청크의 현재 병합 위치를 가리키는 포인터 배열입니다.
-    size_t mp_left;               // 아직 병합할 데이터가 남은 청크의 수입니다.
-    unsigned char *op;            // buf2에 데이터를 쓸 위치를 가리
+  unsigned char *mp[CHUNK_CNT]; // 각 청크의 현재 병합 위치를 가리키는 포인터 배열입니다.
+  size_t mp_left;               // 아직 병합할 데이터가 남은 청크의 수입니다.
+  unsigned char *op;            // buf2에 데이터를 쓸 위치를 가리키는 포인터입니다.
+  size_t i;                     // 반복문 인덱스입니다.
+
+  msg ("merge"); // "merge" 메시지를 출력합니다.
+
+  /* Initialize merge pointers. */
+  // 병합 포인터를 초기화합니다.
+  mp_left = CHUNK_CNT; // 남은 청크 수를 초기화합니다.
+  for (i = 0; i < CHUNK_CNT; i++) // 각 청크에 대해
+    mp[i] = buf1 + CHUNK_SIZE * i; // 해당 청크의 시작 주소로 포인터를 설정합니다.
+
+  /* Merge. */
+  // 병합합니다.
+  op = buf2; // 출력 포인터를 buf2의 시작으로 설정합니다.
+  while (mp_left > 0) // 병합할 청크가 남아있는 동안 반복합니다.
+    {
+      /* Find smallest value. */
+      // 가장 작은 값을 찾습니다.
+      size_t min = 0; // 가장 작은 값을 가진 청크의 인덱스를 저장합니다.
+      // 현재 남아있는 청크들 중에서 (mp[0] ~ mp[mp_left-1])
+      for (i = 1; i < mp_left; i++)
+        if (*mp[i] < *mp[min]) // 현재 최소값보다 더 작은 값을 찾으면
+          min = i;             // min 인덱스를 갱신합니다.
+
+      /* Append value to buf2. */
+      // 찾은 가장 작은 값을 buf2에 추가합니다.
+      *op++ = *mp[min];
+
+      /* Advance merge pointer.
+         Delete this chunk from the set if it's emptied. */
+      // 병합 포인터를 진행시킵니다.
+      // 이 청크가 비워졌으면 집합에서 삭제합니다.
+      // 해당 청크의 포인터(mp[min])를 1 증가시키고,
+      if ((++mp[min] - buf1) % CHUNK_SIZE == 0) // 만약 해당 청크의 끝에 도달했다면
+        mp[min] = mp[--mp_left]; // 해당 청크를 유효한 마지막 청크로 대체하고 남은 청크 수를 줄입니다.
+    }
+}
+
+// 최종 정렬된 결과(buf2)가 올바른지(원래 데이터의 히스토그램과 일치하는지) 확인합니다.
+static void
+verify (void) // 검증 함수입니다.
+{
+  size_t buf_idx;  // buf2를 순회하기 위한 인덱스입니다.
+  size_t hist_idx; // 히스토그램을 순회하기 위한 인덱스입니다 (0-255 바이트 값).
+
+  msg ("verify"); // "verify" 메시지를 출력합니다.
+
+  buf_idx = 0; // buf2 인덱스를 0으로 초기화합니다.
+  // 히스토그램의 모든 바이트 값(0부터 255까지)에 대해 반복합니다.
+  for (hist_idx = 0; hist_idx < sizeof histogram / sizeof *histogram;
+       hist_idx++)
+    {
+      // 현재 바이트 값(hist_idx)이 원래 데이터에 있었던 횟수(histogram[hist_idx])만큼 반복합니다.
+      while (histogram[hist_idx]-- > 0)
+        {
+          // buf2의 현재 위치(buf_idx)에 있는 값이 예상되는 바이트 값(hist_idx)과 다르면
+          if (buf2[buf_idx] != hist_idx)
+            fail ("bad value %d in byte %zu", buf2[buf_idx], buf_idx); // 테스트 실패를 알립니다.
+          buf_idx++; // buf2 인덱스를 증가시킵니다.
+        }
+    }
+  // 모든 검증이 통과하고 buf_idx가 원래 데이터 크기와 같으면 성공입니다.
+  msg ("success, buf_idx=%'zu", buf_idx);
+}
+
+// 다른 테스트 파일에서 호출될 주 함수입니다.
+// child_name: 자식 프로세스로 실행할 정렬 프로그램 이름.
+// exit_status: 해당 자식 프로세스의 예상 성공 종료 코드.
+void
+parallel_merge (const char *child_name, int exit_status)
+{
+  init (); // 데이터 초기화 함수를 호출합니다.
+  sort_chunks (child_name, exit_status); // 청크 정렬 함수를 호출합니다.
+  merge (); // 병합 함수를 호출합니다.
+  verify (); // 검증 함수를 호출합니다.
 }
