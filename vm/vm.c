@@ -68,9 +68,9 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
     ASSERT(VM_TYPE(type) != VM_UNINIT)
 
     struct supplemental_page_table *spt = &thread_current()->spt;
-    struct page *page;
+    struct page *page = malloc(sizeof *page);
 
-    if (!is_user_vaddr(upage))
+    if(!is_user_vaddr(upage))
         goto err;
     /* Check wheter the upage is already occupied or not. */
     // 이미지가 이미 점유되어 있는지 확인하세요.
@@ -81,27 +81,30 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
          * TODO: should modify the field after calling the uninit_new. */
         // 해야될 것: 페이지를 생성하고, VM 유형에 따라 초기화 파일을 가져온 후, uninit_new를 호출하여 "uninit" 페이지 구조체를 생성합니다.
         // 해야될 것: uninit_new를 호출한 후 필드를 수정해야 합니다.
-        page = malloc(sizeof *page);
         if(page == NULL)
         {
             printf("📃vm_alloc_page_with_initializer: malloc for page failed\n");
             goto err;
         }
+        typedef bool (*initializerFunc)(struct page *, enum vm_type);
+        initializerFunc initializer = NULL;
 
+        switch(VM_TYPE(type))
+        {
+        case VM_ANON:
+            initializer = anon_initializer;
+            break;
+        case VM_FILE:
+            initializer = file_backed_initializer;
+            break;
+        }
         /* uninit_new 내부에서는 새로 할당한 page 내부에 unitit 인자 초기화,  */
-        uninit_new(page, upage, NULL, VM_UNINIT, NULL, uninit_initialize);
+        uninit_new(page, upage, init, type, aux, initializer);
         page->writable = writable;
 
         /* TODO: Insert the page into the spt. */
         // 해당 페이지를 spt에 삽입합니다.
-        bool success = spt_insert_page(spt, page);
-        if (!success)
-        {
-            free(page);
-            printf("📩vm_alloc_page_with_init spt_insert_page failed\n");
-            goto err;
-        }
-        return true;
+        return spt_insert_page(spt, page);
     }
     goto err;
 err:
@@ -271,7 +274,7 @@ vm_do_claim_page(struct page *page)
 
     /* TODO: Insert page table entry to map page's VA to frame's PA. */
     // 페이지의 VA를 프레임의 PA에 매핑하기 위해 페이지 테이블 항목을 삽입합니다.
-    if (!install_page(page->va, frame->kva, page->writable))
+    if(!install_page(page->va, frame->kva, page->writable))
         return false;
     return swap_in(page, frame->kva);
 }
