@@ -969,6 +969,8 @@ install_page (void *upage, void *kpage, bool writable) {
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
+ /* ---------------- 수정 부분 시작점 ---------------- */
+
 static bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* 넘겨받은 인자를 바꿔준다. */
@@ -1054,17 +1056,25 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
+
+	/* 스택의 맨 최상단은 감소하고, 사용자 스택의 베이스가 되는 곳으로부터 내려가면 된다.
+	 * 스택의 최 상단을 가리키고 있는 USER_STACK으로부터 4KB만큼의 페이지 크기를 할당 받는다. */
 	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
 
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
-	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
-		success = vm_claim_page (stack_bottom) ;// 페이지 할당 성공시 물리 프레임 생성 후 매핑 
-		if (success){
+	/* 할당 받은 곳에서 페이지의 크기(4KB)만큼 할당 받고, 스택의 아래부터 writable을 초기화 해준다.*/
+	if(vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
+		/* 페이지 할당에 성공하면, 프레임으로 바로 적재해버린다, 당연히 기준이 되는 지점은 stack_bottom이다.*/
+		success = vm_claim_page(stack_bottom);
+		if(success){
+			/* rsp 값을 반환함으로써, 4KB크기의 가상메모리의 주소의 시작점을 반환 받는다.*/
 			if_->rsp = USER_STACK;
 		}
-	}	
+	}
 	return success;
 }
 #endif /* VM */
+
+ /* ---------------- 수정 부분 끝점 ---------------- */
