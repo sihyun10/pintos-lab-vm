@@ -971,6 +971,22 @@ install_page (void *upage, void *kpage, bool writable) {
 
 static bool
 lazy_load_segment (struct page *page, void *aux) {
+	/* 넘겨받은 인자를 바꿔준다. */
+	struct temp_load *info = aux;
+	/* 현재 페이지의 커널 page를 반환 받는다. */
+	uint8_t *kva = page->frame->kva;
+	
+	/* 파일에서 읽을 바이트 수만큼 읽는다 */
+	if(file_read_at(info->file, kva, info->read_bytes, info->offset) != (int)info->read_bytes)
+		return false;
+	
+	/*  */
+	memset(kva+info->read_bytes, 0, info->zero_bytes);
+
+	free(info);
+
+	return true;
+
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
@@ -1013,7 +1029,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		 * 페이지 할당한 곳 기준으로부터의 높이인 ofs
 		 * 페이지를 어느정도 읽을지 (4KB가 넘으면, 4KB, 그게 아니면 남은 값)
 		 * 페이지를 읽고 나서 0으로 얼마나 채워넣는지(4KB - 읽은 바이트의 크기)*/
-		struct temp_load *temp_load = malloc(sizeof(temp_load));
+		struct temp_load *temp_load = calloc(1, sizeof(struct temp_load));
 		temp_load->file = file;
 		temp_load->offset = ofs;
 		temp_load->read_bytes = page_read_bytes;
@@ -1038,13 +1054,17 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
-	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
+	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
 
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
-	/* TODO: Your code goes here */
-
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
+		success = vm_claim_page (stack_bottom) ;// 페이지 할당 성공시 물리 프레임 생성 후 매핑 
+		if (success){
+			if_->rsp = USER_STACK;
+		}
+	}	
 	return success;
 }
 #endif /* VM */

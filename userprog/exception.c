@@ -131,10 +131,6 @@ page_fault (struct intr_frame *f) {
 	// 프로세서에서 자동으로 페이지폴트난 주소를 cr2레지스터에 저장한다
 	fault_addr = (void *) rcr2();
 
-	/* bad behavior  */
-
-	if(!is_user_vaddr(fault_addr) || pml4_get_page(thread_current()->pml4, fault_addr) == NULL || fault_addr == NULL)
-		exit(-1);
 	
 
 	/* Turn interrupts back on (they were only off so that we could
@@ -153,6 +149,11 @@ page_fault (struct intr_frame *f) {
 		return;
 #endif
 
+
+	/* bad behavior  */
+
+	if(!is_user_vaddr(fault_addr) || pml4_get_page(thread_current()->pml4, fault_addr) == NULL || fault_addr == NULL)
+		exit(-1);
 	/* Count page faults. */
 	page_fault_cnt++;
 
