@@ -75,8 +75,9 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		// 해야될 것: 페이지를 생성하고, VM 유형에 따라 초기화 파일을 가져온 후, uninit_new를 호출하여 "uninit" 페이지 구조체를 생성합니다.
 		// 해야될 것: uninit_new를 호출한 후 필드를 수정해야 합니다.
 
-		/* 페이지 하나 가져온다. vm_alloc_page를 이용해서*/
+		/* 페이지 하나 생성한다. vm_alloc_page를 이용해서*/
 		struct page *page = malloc(sizeof(struct page));
+		/* 타입별로 initializer 방식이 다르기 때문에, 그걸 핸들링 해주게 선언해준다. */
 		bool (*initializer)(struct page *, enum vm_type, void *kva);
 		/* 페이지를 초기화 해주는데, 인자를 어떻게 넘길지 모르겠다. 그냥 anonymous
 		* 에 맞춰서 넘겨주면 이렇게 되지 않을까 싶고, Gitbook에도 이런식으로 설명이 나옴
@@ -206,7 +207,7 @@ vm_get_frame(void)
 	/* TODO: Fill this function. */
 	/* 사용자 풀의 영역을 할당 받을 주소를 저장한다. 할당 받는다고 해서 받는게 아니라
 	 * 그냥 시작 주소만 알려줘서 사용해라 라는것임, 이해하기 쉽게 그냥 할당이라고 얘기함*/
-	uint64_t *kva = palloc_get_multiple(PAL_ZERO, 1);
+	uint64_t *kva = palloc_get_multiple(PAL_USER, 1);
 	/* 할당에 실패하게 된다면, kernel 패닉 던지는데, swap out 구현하면 해결될 것임
 	 * 그땐 오류 내용 바꿔야 함*/
 	if(kva == NULL){
@@ -326,6 +327,46 @@ void supplemental_page_table_init(struct supplemental_page_table *spt)
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
 								  struct supplemental_page_table *src UNUSED)
 {
+	/* hash_iterator 생성하여, src의 머리를 가리키게 하여 초기화 */
+	struct hash_iterator i;
+	hash_first(&i, src);
+
+	/* iterator가 전부 빌때까지 */
+	while(hash_next(&i)){
+		/* 페이지를 가져와서 페이지에 대한 추후 필요할 내용들을 복사한다.
+		 * 복사된 항목
+		 * type
+		 * upage(va)
+		 * wrtiable */
+		struct page *src_page = hash_entry(hash_cur(&i), struct page, hash_elem);
+		/* 장래희망 타입을 저장한다. */
+		enum vm_type hope_type = VM_TYPE(src_page->uninit.type); 
+		/* 현재 페이지의 타입을 저장한다. */
+		enum vm_type real_type = page_get_type(src_page);
+		void *upage = src_page->va;
+		bool writable = src_page->writable; 
+
+		/* 만약, VM_UNINIT일 경우, 페이지를 새로 생성해줘야 한다.*/
+		if(real_type = VM_UNINIT){			
+			vm_initializer *init = src_page->uninit.init;
+			if(!vm_alloc_page_with_initializer(hope_type, upage, writable, init, NULL)){
+				return false;
+			}
+		}
+		/* 그 외의 경우, 페이지를 새로 생성하고, 프레임을 만들어주고 내부 내용을 복사한다.*/
+		else{
+			if(!vm_alloc_page(hope_type, upage, writable)){
+				return false;
+			}
+			if(!vm_claim_page(upage)){
+				return false;
+			}
+
+			struct page *dst_page = spt_find_page(dst, upage);
+			memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
+		}
+	}
+	return true;
 }
 
 void page_destroy(struct hash_elem *e, void *aux UNUSED)
