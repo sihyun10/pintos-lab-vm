@@ -1078,6 +1078,19 @@ setup_stack(struct intr_frame *if_)
    * TODO: You should mark the page is stack. */
   /* TODO: Your code goes here */
 
+  // 1. 페이지 할당
+  success = vm_alloc_page_with_initializer(VM_ANON | VM_MARKER_0, stack_bottom, true, NULL, NULL);
+  if (!success)
+    return false;
+
+  // 2. 즉시 페이지 로딩 (물리 프레임에 연결)
+  success = vm_claim_page(stack_bottom);
+  if (!success)
+    return false;
+
+  // 3. 사용자 스택 포인터 설정
+  if_->rsp = USER_STACK;
+
   return success;
 }
 #endif /* VM */
