@@ -215,13 +215,26 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
                          bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 {
   struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-  struct page *page = NULL;
-  /* TODO: Validate the fault */
-  // 오류를 검증하세요
-  /* TODO: Your code goes here */
-  // 코드를 여기에 적으세요
 
-  return vm_do_claim_page(page);
+  //  잘못된 주소 예외 처리
+  if (addr == NULL || is_kernel_vaddr(addr))
+    return false;
+
+  // 접근한 페이지가 메모리에 없을 경우
+  if (not_present)
+  {
+    struct page *page = spt_find_page(spt, addr);
+    if (page == NULL)
+      return false;
+
+    // 쓰기 불가능한 페이지에 write 시도한 경우
+    if (write && !page->writable)
+      return false;
+
+    // 페이지를 메모리에 매핑
+    return vm_do_claim_page(page);
+  }
+  return false;
 }
 
 /* Free the page.
