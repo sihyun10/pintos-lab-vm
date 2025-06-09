@@ -298,6 +298,44 @@ void supplemental_page_table_init(struct supplemental_page_table *spt)
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
                                   struct supplemental_page_table *src UNUSED)
 {
+  struct hash_iterator i;
+  hash_first(&i, &src->spt_hash);
+  while (hash_next(&i))
+  {
+    struct page *src_page = hash_entry(hash_cur(&i), struct page, hash_elem);
+    enum vm_type type = src_page->operations->type;
+    void *upage = src_page->va;
+    bool writable = src_page->writable;
+
+    // 1. UNINIT 페이지 복사
+    if (type == VM_UNINIT)
+    {
+      // init, aux 포인터 복사
+      vm_initializer *init = src_page->uninit.init;
+      void *aux_copy = NULL;
+
+      if (!vm_alloc_page_with_initializer(src_page->uninit.type, upage, writable, init, aux_copy))
+        return false;
+    }
+    else
+    {
+      if (!vm_alloc_page(type, upage, writable))
+        return false;
+    }
+
+    // 2. 페이지 즉시 할당 (물리 메모리 매핑)
+    if (!vm_claim_page(upage))
+      return false;
+
+    // 3. 물리 페이지 복사
+    struct page *dst_page = spt_find_page(dst, upage);
+    struct page *src_found = spt_find_page(src, upage);
+    if (dst_page == NULL || src_found == NULL)
+      return false;
+
+    memcpy(dst_page->frame->kva, src_found->frame->kva, PGSIZE);
+  }
+  return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -307,6 +345,14 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
   /* TODO: Destroy all the supplemental_page_table hold by thread and
    * TODO: writeback all the modified contents to the storage. */
   // 스레드가 보유한 supplemental_page_table을 모두 파괴하고 수정된 내용을 모두 저장소에 다시 쓰게 구현하세요.
+  hash_clear(&spt->spt_hash, destroy_page_entry);
+}
+
+void destroy_page_entry(struct hash_elem *e, void *aux UNUSED)
+{
+  struct page *page = hash_entry(e, struct page, hash_elem);
+  destroy(page);
+  free(page);
 }
 
 /* 페이지를 해시값으로 가져오기 위한 함수 */
