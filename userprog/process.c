@@ -29,19 +29,6 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 
-/* 지연 로딩을 위한 정보 할당,
- * 어떤 파일에서 - *file
- * 얼마만큼 - read_bytes
- * 읽고 남은 0으로 초기화해줄 공간 - zero_bytes
- * 어떤 오프셋부터 읽어야 하는지 - offset */
-struct file_load_info
-{
-	struct file *file;
-	off_t offset;
-	uint32_t read_bytes;
-	uint32_t zero_bytes;
-};
-
 /* General process initializer for initd and other process. */
 static void
 process_init (void) {
@@ -82,7 +69,6 @@ process_create_initd (const char *file_name) {
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
-	//printf("process create done.\n");
 	//printf("sema val: %d\n", ch_st->sema_wait.value);
 	// process_create_initd 할 때는 아직 main쓰레드임.
 	// fork는 아니지만 예외적으로 유저프로그램을 실행하는 쓰레드를 main쓰레드의 자식으로 설정
@@ -102,7 +88,6 @@ initd (void *f_name) {
 #ifdef VM
 	supplemental_page_table_init (&thread_current ()->spt);
 #endif
-	//printf("initd\n");
 	process_init ();
 	// 사용자 프로그램을 메모리에 로드하고 실행한다.
 	// 실패시 커널 패닉
@@ -974,6 +959,16 @@ install_page (void *upage, void *kpage, bool writable) {
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
+bool
+install_page (void *upage, void *kpage, bool writable) {
+	struct thread *t = thread_current ();
+
+	/* Verify that there's not already a page at that virtual
+	 * address, then map our page there. */
+	return (pml4_get_page (t->pml4, upage) == NULL
+			&& pml4_set_page (t->pml4, upage, kpage, writable));
+}
+
 static bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
@@ -981,9 +976,9 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: VA is available when calling this function. */
 	struct file *file = ((struct file_load_info *)aux)->file;
 	off_t offset = ((struct file_load_info *)aux)->offset;
-	size_t read_bytes = ((struct file_load_info *)aux)->read_bytes
+	size_t read_bytes = ((struct file_load_info *)aux)->read_bytes;
 	size_t zero_bytes = PGSIZE - read_bytes;
-
+	printf("offset is %d",offset);
 	file_seek(file, offset);
 
 	if(file_read(file, page->frame->kva, read_bytes) != (int)read_bytes)

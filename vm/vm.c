@@ -21,7 +21,7 @@ void vm_init(void)
     vm_anon_init();
     vm_file_init();
 #ifdef EFILESYS /* For project 4 */
-  pagecache_init();
+    pagecache_init();
 #endif
     register_inspect_intr();
     /* DO NOT MODIFY UPPER LINES. */
@@ -209,6 +209,11 @@ vm_get_frame(void)
 static void
 vm_stack_growth(void *addr UNUSED)
 {
+    if(vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1))
+    {
+        vm_claim_page(addr);
+        thread_current()->stack_bottom -= PGSIZE;
+    }
 }
 
 /* Handle the fault on write_protected page */
@@ -226,11 +231,26 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
     struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
     struct page *page = NULL;
     /* TODO: Validate the fault */
-    // 오류를 검증하세요
+    if (is_kernel_vaddr(addr))
+        return false;
     /* TODO: Your code goes here */
-    // 코드를 여기에 적으세요
 
-    return vm_do_claim_page(page);
+    void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
+    if (not_present)
+    {
+        if (!vm_claim_page(addr))
+        {
+            if(rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK)
+            {
+                vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+                return true;
+            }
+            return false;
+        }
+        else
+            return true;
+    }
+    return false;
 }
 
 /* Free the page.
