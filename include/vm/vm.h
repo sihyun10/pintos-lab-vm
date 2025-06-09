@@ -23,7 +23,7 @@ enum vm_type
   /* Bit flags to store state */
   /* 상태를 저장하기 위한 비트 플래그 */
 
-  /* Auxillary bit flag marker for store information. You can add more
+  /* Auxillary bit flag marker  for store information. You can add more
    * markers, until the value is fit in the int. */
   /* 정보 저장을 위한 보조 비트 플래그 마커.
    * int 값에 맞을 때 까지 더 많은 마커를 추가할 수 있음 */
@@ -64,6 +64,7 @@ struct page
   /* 아래 구현 */
   struct hash_elem hash_elem; // SPT 삽입용 elem
   bool writable;              // 페이지 쓰기 가능여부 플래그
+
 
   /* Per-type data are binded into the union.
    * Each function automatically detects the current union */
@@ -106,7 +107,9 @@ struct page_operations
 
 #define swap_in(page, v) (page)->operations->swap_in((page), v)
 #define swap_out(page) (page)->operations->swap_out(page)
-#define destroy(page) if ((page)->operations->destroy) (page)->operations->destroy(page)
+#define destroy(page)              \
+  if ((page)->operations->destroy) \
+  (page)->operations->destroy(page)
 
 /* 최대 스택 크기 1MB 제한 */
 #define STACK_LIMIT (USER_STACK - (1 << 20))

@@ -49,6 +49,7 @@ hash_init (struct hash *h,
    whether done in DESTRUCTOR or elsewhere. */
 void
 hash_clear (struct hash *h, hash_action_func *destructor) {
+	printf("[hash_clear] clear call\n");
 	size_t i;
 
 	for (i = 0; i < h->bucket_cnt; i++) {
@@ -63,7 +64,7 @@ hash_clear (struct hash *h, hash_action_func *destructor) {
 
 		list_init (bucket);
 	}
-
+	printf("[hash_destroy] destroy exit\n");
 	h->elem_cnt = 0;
 }
 
@@ -79,8 +80,11 @@ hash_clear (struct hash *h, hash_action_func *destructor) {
    elsewhere. */
 void
 hash_destroy (struct hash *h, hash_action_func *destructor) {
+	printf("[hash_destroy] destroy call\n");
 	if (destructor != NULL)
 		hash_clear (h, destructor);
+
+	printf("[hash_destroy] destroy exit\n");
 	free (h->buckets);
 }
 
