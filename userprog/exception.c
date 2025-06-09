@@ -151,8 +151,9 @@ page_fault(struct intr_frame *f)
     return;
 #endif
   /* Count page faults. */
+  if (!is_user_vaddr(fault_addr) || pml4_get_page(thread_current()->pml4, fault_addr) == NULL)
+    exit(-1);
   page_fault_cnt++;
-  exit(-1);
 
   /* If the fault is true fault, show info and exit. */
   printf("Page fault at %p: %s error %s page in %s context.\n",
