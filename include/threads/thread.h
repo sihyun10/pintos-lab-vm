@@ -153,6 +153,7 @@ struct thread
 
   /* 사용자 스택 포인터 저장용 */
   void *user_rsp;
+  void *stack_bottom;
 #endif
 
   /* Owned by thread.c. */
