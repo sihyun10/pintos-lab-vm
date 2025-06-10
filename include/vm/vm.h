@@ -110,6 +110,9 @@ struct page_operations
   if ((page)->operations->destroy) \
   (page)->operations->destroy(page)
 
+/* 최대 스택 크기 1MB 제한 */
+#define STACK_LIMIT (USER_STACK - (1 << 20))
+
 /* Representation of current process's memory space.
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */

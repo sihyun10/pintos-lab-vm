@@ -80,6 +80,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
   // 시스템 콜 번호
   uint64_t syscall_num = f->R.rax;
 
+#ifdef VM
+  // 유저 스택 포인터 저장
+  thread_current()->user_rsp = f->rsp;
+#endif
+
   switch (syscall_num)
   {
   case SYS_HALT:

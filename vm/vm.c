@@ -216,13 +216,27 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 {
   struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 
-  //  잘못된 주소 예외 처리
+  //  잘못된 주소거나 커널 영역 접근 거부
   if (addr == NULL || is_kernel_vaddr(addr))
     return false;
 
-  // 접근한 페이지가 메모리에 없을 경우
+  // 페이지가 존재하지 않아 fault가 발생한 경우
   if (not_present)
   {
+    void *rsp = f->rsp;
+    if (!user)
+      rsp = thread_current()->user_rsp;
+
+    // Stack Growth 판단
+    if ((uintptr_t)addr >= (uintptr_t)STACK_LIMIT &&
+        (uintptr_t)addr <= (uintptr_t)USER_STACK &&
+        (uintptr_t)addr >= (uintptr_t)rsp - 8)
+    {
+      vm_stack_growth(addr);
+      return true;
+    }
+
+    // 기존 SPT에서 찾기
     struct page *page = spt_find_page(spt, addr);
     if (page == NULL)
       return false;
