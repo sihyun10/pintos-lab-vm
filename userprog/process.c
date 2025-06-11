@@ -1006,7 +1006,6 @@ lazy_load_segment(struct page *page, void *aux)
   // 남은 영역은 0으로 채우기
   memset(kva + page_read_bytes, 0, page_zero_bytes);
 
-  free(info);
   return true;
 }
 

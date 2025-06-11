@@ -330,33 +330,25 @@ bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
     void *upage = src_page->va;
     bool writable = src_page->writable;
 
-    // 1. UNINIT 페이지 복사
     if (type == VM_UNINIT)
     {
-      // init, aux 포인터 복사
       vm_initializer *init = src_page->uninit.init;
-      void *aux_copy = NULL;
+      void *aux_copy = src_page->uninit.aux;
 
       if (!vm_alloc_page_with_initializer(src_page->uninit.type, upage, writable, init, aux_copy))
         return false;
     }
     else
     {
-      if (!vm_alloc_page(type, upage, writable))
+      if (!vm_alloc_page_with_initializer(src_page->operations->type, upage, writable, NULL, NULL))
         return false;
+
+      if (!vm_claim_page(upage))
+        return false;
+
+      struct page *page = spt_find_page(dst, upage);
+      memcpy(page->frame->kva, src_page->frame->kva, PGSIZE);
     }
-
-    // 2. 페이지 즉시 할당 (물리 메모리 매핑)
-    if (!vm_claim_page(upage))
-      return false;
-
-    // 3. 물리 페이지 복사
-    struct page *dst_page = spt_find_page(dst, upage);
-    struct page *src_found = spt_find_page(src, upage);
-    if (dst_page == NULL || src_found == NULL)
-      return false;
-
-    memcpy(dst_page->frame->kva, src_found->frame->kva, PGSIZE);
   }
   return true;
 }
