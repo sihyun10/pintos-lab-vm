@@ -2,6 +2,10 @@
 // file.c: 메모리 백업 파일 객체(mmaped 객체)의 구현입니다.
 
 #include "vm/vm.h"
+#include "string.h"
+#include "threads/thread.h"
+#include "vm/vm.h"
+#include "threads/vaddr.h"
 
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);

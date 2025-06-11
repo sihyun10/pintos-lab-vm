@@ -402,7 +402,7 @@ int process_exec(void *f_name)
   // printf("load curr magic: 0x%x\n", thread_current()->magic);
   /* And then load the binary */
   // 실행파일을 메모리에 적재
-	printf("[process_exec] current_thread, spt is null = %d\n", thread_current()->spt.spt_hash.buckets == NULL);
+	// printf("[process_exec] current_thread, spt is null = %d\n", thread_current()->spt.spt_hash.buckets == NULL);
 	process_cleanup ();
 	//printf("load curr magic: 0x%x\n", thread_current()->magic);
 	/* And then load the binary */
@@ -1015,6 +1015,7 @@ lazy_load_segment(struct page *page, void *aux)
 static bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* 넘겨받은 인자를 바꿔준다. */
+	
 	struct temp_load *info = aux;
 	page->uninit.aux = info;
 	/* 현재 페이지의 커널 page를 반환 받는다. */
@@ -1069,7 +1070,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
     size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
 	while (read_bytes > 0 || zero_bytes > 0) {
-		
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
