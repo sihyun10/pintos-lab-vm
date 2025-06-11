@@ -294,6 +294,13 @@ int read(int fd, void *buffer, unsigned size)
   if (fd >= FD_MAX)
     exit(-1);
   check_valid_buffer(buffer, size);
+
+#ifdef VM
+  struct page *page = spt_find_page(&thread_current()->spt, buffer);
+  if (page && !page->writable)
+    exit(-1);
+#endif
+
   if (fd == 0)
   {
     char c;
