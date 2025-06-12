@@ -617,7 +617,6 @@ schedule(void) {
   ASSERT(is_thread(next));
   /* Mark us as running. */
   next->status = THREAD_RUNNING;
-
   /* Start new time slice. */
   thread_ticks = 0;
 
