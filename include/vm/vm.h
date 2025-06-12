@@ -110,6 +110,9 @@ struct page_operations
   if ((page)->operations->destroy) \
   (page)->operations->destroy(page)
 
+/* 최대 스택 크기 1MB 제한 */
+#define STACK_LIMIT (USER_STACK - (1 << 20))
+
 /* Representation of current process's memory space.
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
@@ -126,6 +129,7 @@ void supplemental_page_table_init(struct supplemental_page_table *spt);
 bool supplemental_page_table_copy(struct supplemental_page_table *dst,
                                   struct supplemental_page_table *src);
 void supplemental_page_table_kill(struct supplemental_page_table *spt);
+void destroy_page_entry(struct hash_elem *e, void *aux);
 struct page *spt_find_page(struct supplemental_page_table *spt,
                            void *va);
 bool spt_insert_page(struct supplemental_page_table *spt, struct page *page);
