@@ -45,7 +45,6 @@ process_init(void)
   struct thread *current = thread_current();
 }
 
-
 /* Starts the first userland program, called "initd", loaded from FILE_NAME.
  * The new thread may be scheduled (and may even exit)
  * before process_create_initd() returns. Returns the initd's
@@ -227,8 +226,6 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 }
 #endif
 
-
-
 /* A thread function that copies parent's execution context.
  * Hint) parent->tf does not hold the userland context of the process.
  *       That is, you are required to pass second argument of process_fork to
@@ -395,18 +392,13 @@ int process_exec(void *f_name)
 
   // printf("exec file name: %s\n", f_name);
 
-	/* We first kill the current context */
-	// 현재 프로세스에서 사용하던 자원 제거
+  /* We first kill the current context */
+  // 현재 프로세스에서 사용하던 자원 제거
 
   process_cleanup();
   // printf("load curr magic: 0x%x\n", thread_current()->magic);
   /* And then load the binary */
   // 실행파일을 메모리에 적재
-	// printf("[process_exec] current_thread, spt is null = %d\n", thread_current()->spt.spt_hash.buckets == NULL);
-	process_cleanup ();
-	//printf("load curr magic: 0x%x\n", thread_current()->magic);
-	/* And then load the binary */
-	// 실행파일을 메모리에 적재
 
   success = load(file_name, &_if);
   // printf("here\n");
@@ -988,7 +980,7 @@ install_page(void *upage, void *kpage, bool writable)
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
- static bool
+static bool
 lazy_load_segment(struct page *page, void *aux)
 {
   /* TODO: Load the segment from the file */
@@ -1010,29 +1002,6 @@ lazy_load_segment(struct page *page, void *aux)
     free(info);
     return false;
   }
- /* ---------------- 수정 부분 시작점 ---------------- */
-
-static bool
-lazy_load_segment (struct page *page, void *aux) {
-	/* 넘겨받은 인자를 바꿔준다. */
-	
-	struct temp_load *info = aux;
-	page->uninit.aux = info;
-	/* 현재 페이지의 커널 page를 반환 받는다. */
-	uint8_t *kva = page->frame->kva;
-
-	// printf("(lazy)thread name : %s\n", thread_current()->name);
-	// printf("(lazy)page addr : %p\n", page->va);
-	// printf("(lazy)------------\n");
-	/* 파일에서 읽을 바이트 수만큼 읽는다 */
-	file_read_at(info->file, kva, info->read_bytes, info->offset);
-	// printf("info = %d, \tzero = %d\n", info->read_bytes, info->zero_bytes);
-	// if(file_read_at(info->file, kva, info->read_bytes, info->offset) != (int)info->read_bytes)
-	// 	return false;
-	
-	/*  */
-	memset(kva+info->read_bytes, 0, info->zero_bytes);
-	// free(info);
 
   // 남은 영역은 0으로 채우기
   memset(kva + page_read_bytes, 0, page_zero_bytes);
@@ -1069,22 +1038,8 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
      * and zero the final PAGE_ZERO_BYTES bytes. */
     size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
-	while (read_bytes > 0 || zero_bytes > 0) {
-		/* Do calculate how to fill this page.
-		 * We will read PAGE_READ_BYTES bytes from FILE
-		 * and zero the final PAGE_ZERO_BYTES bytes. */
-		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-		/* temp_load라는 구조체를 새로 만들어서, 메모리에 올릴때 요청시에만 올릴거다.
-		 * 그렇기에, 매번 파일의 정보를 읽은 만큼을 나눠야 하기 때문에, 계속 갱신이 필요한데, 그것을 인자를 aux에 담아서 넘긴다.
-		 * 넘길때, 값을 갱신시켜줘야 하는데, 일단 위에서 페이지에서 읽은 만큼을 나눠주고, 값을 갱신하는 연산은 다 진행했기에, 그것에 맞춰 구조체 값을 초기화 시킨다.
-		 * 필요한 애들은, 
-		 * 읽을 파일의 대상인 file
-		 * 페이지 할당한 곳 기준으로부터의 높이인 ofs
-		 * 페이지를 어느정도 읽을지 (4KB가 넘으면, 4KB, 그게 아니면 남은 값)
-		 * 페이지를 읽고 나서 0으로 얼마나 채워넣는지(4KB - 읽은 바이트의 크기)*/
-		/* TODO: Set up aux to pass information to the lazy_load_segment. */
+    /* TODO: Set up aux to pass information to the lazy_load_segment. */
     // aux 구조체 설정
     struct load_info *info = (struct load_info *)malloc(sizeof(struct load_info));
 
@@ -1092,15 +1047,15 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
     info->ofs = ofs;
     info->read_bytes = page_read_bytes;
     info->zero_bytes = page_zero_bytes;
-	if (!vm_alloc_page_with_initializer(VM_ANON, upage,
+
+    if (!vm_alloc_page_with_initializer(VM_ANON, upage,
                                         writable, lazy_load_segment, info))
     {
       free(info);
       return false;
     }
-		/*aux로 넘길 구조체로 초기화*/
-		
-  /* Advance. */
+
+    /* Advance. */
     // 다음 페이지를 위해 상태를 업데이트
     read_bytes -= page_read_bytes;
     zero_bytes -= page_zero_bytes;
@@ -1112,25 +1067,29 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
 static bool
-setup_stack (struct intr_frame *if_) {
-	bool success = false;
+setup_stack(struct intr_frame *if_)
+{
+  bool success = false;
+  void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
 
-	/* 스택의 맨 최상단은 감소하고, 사용자 스택의 베이스가 되는 곳으로부터 내려가면 된다.
-	 * 스택의 최 상단을 가리키고 있는 USER_STACK으로부터 4KB만큼의 페이지 크기를 할당 받는다. */
-	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
+  /* TODO: Map the stack on stack_bottom and claim the page immediately.
+   * TODO: If success, set the rsp accordingly.
+   * TODO: You should mark the page is stack. */
+  /* TODO: Your code goes here */
 
-	/* TODO: Map the stack on stack_bottom and claim the page immediately.
-	 * TODO: If success, set the rsp accordingly.
-	 * TODO: You should mark the page is stack. */
-	/* 할당 받은 곳에서 페이지의 크기(4KB)만큼 할당 받고, 스택의 아래부터 writable을 초기화 해준다.*/
-	if(vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
-		/* 페이지 할당에 성공하면, 프레임으로 바로 적재해버린다, 당연히 기준이 되는 지점은 stack_bottom이다.*/
-		success = vm_claim_page(stack_bottom);
-		if(success){
-			/* rsp 값을 반환함으로써, 4KB크기의 가상메모리의 주소의 시작점을 반환 받는다.*/
-			if_->rsp = USER_STACK;
-		}
-	}
-	return success;
+  // 1. 페이지 할당
+  success = vm_alloc_page_with_initializer(VM_ANON | VM_MARKER_0, stack_bottom, true, NULL, NULL);
+  if (!success)
+    return false;
+
+  // 2. 즉시 페이지 로딩 (물리 프레임에 연결)
+  success = vm_claim_page(stack_bottom);
+  if (!success)
+    return false;
+
+  // 3. 사용자 스택 포인터 설정
+  if_->rsp = USER_STACK;
+
+  return success;
 }
 #endif /* VM */
